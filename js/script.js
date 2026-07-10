@@ -44,10 +44,10 @@ async function getSpaceImages() {
   getImagesBtn.disabled = true;
   getImagesBtn.textContent = "Loading...";
 
-  const requestUrl =
+const requestUrl =
   `${apiUrl}?api_key=${apiKey}` +
-  `&start_date=1995-06-16` +
-  `&end_date=2025-07-09` +
+  `&start_date=${startDate}` +
+  `&end_date=${endDate}` +
   `&thumbs=true`;
 
   try {
