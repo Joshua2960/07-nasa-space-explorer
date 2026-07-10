@@ -46,8 +46,8 @@ async function getSpaceImages() {
 
   const requestUrl =
   `${apiUrl}?api_key=${apiKey}` +
-  `&start_date=2025-07-01` +
-  `&end_date=2025-07-03` +
+  `&start_date=1995-06-16` +
+  `&end_date=2025-07-09` +
   `&thumbs=true`;
 
   try {
