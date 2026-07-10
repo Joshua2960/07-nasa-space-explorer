@@ -27,94 +27,136 @@ async function getSpaceImages() {
 
   // Make sure both dates were selected
   if (!startDate || !endDate) {
-    showMessage("Please select both a start date and an end date.", "error");
+    showMessage(
+      "Please select both a start date and an end date.",
+      "error"
+    );
     return;
   }
 
   // Make sure the dates are in the correct order
   if (startDate > endDate) {
-    showMessage("The start date must come before the end date.", "error");
+    showMessage(
+      "The start date must come before the end date.",
+      "error"
+    );
     return;
   }
 
-  // Show a loading message while waiting for NASA
+  // Optional: limit the range so the page does not load too much data
+  const start = new Date(`${startDate}T00:00:00`);
+  const end = new Date(`${endDate}T00:00:00`);
+
+  const differenceInDays =
+    (end - start) / (1000 * 60 * 60 * 24);
+
+  if (differenceInDays > 10) {
+    showMessage(
+      "Please select a date range of 10 days or fewer.",
+      "error"
+    );
+    return;
+  }
+
+  // Show a loading message
   showMessage("Loading space images...", "loading");
 
-  // Prevent repeated clicks while loading
+  // Disable the button while the request is running
   getImagesBtn.disabled = true;
   getImagesBtn.textContent = "Loading...";
 
-const requestUrl =
-  `${apiUrl}?api_key=${apiKey}` +
-  `&start_date=${startDate}` +
-  `&end_date=${endDate}` +
-  `&thumbs=true`;
+  // Use the dates selected by the user
+  const requestUrl =
+    `${apiUrl}?api_key=${apiKey}` +
+    `&start_date=${startDate}` +
+    `&end_date=${endDate}` +
+    `&thumbs=true`;
 
   try {
-  console.log("Request URL:", requestUrl);
+    console.log("Selected dates:", startDate, endDate);
+    console.log("NASA request URL:", requestUrl);
 
-  const response = await fetch(requestUrl);
+    // Request data from NASA
+    const response = await fetch(requestUrl);
 
-  // Read NASA's response before checking response.ok
-  const data = await response.json();
+    // Convert NASA's response into JavaScript data
+    const data = await response.json();
 
-  console.log("NASA response:", data);
+    console.log("NASA response:", data);
 
-  if (!response.ok) {
-    const nasaMessage =
-      data.error?.message ||
-      data.msg ||
-      `NASA API request failed with status ${response.status}`;
+    // Handle request-limit errors
+    if (response.status === 429) {
+      throw new Error(
+        "NASA's request limit has been reached. Please wait and try again later."
+      );
+    }
 
-    throw new Error(nasaMessage);
+    // Handle other unsuccessful responses
+    if (!response.ok) {
+      const nasaMessage =
+        data.error?.message ||
+        data.msg ||
+        `NASA API request failed with status ${response.status}`;
+
+      throw new Error(nasaMessage);
+    }
+
+    // Display the APOD results
+    displaySpaceImages(data);
+  } catch (error) {
+    console.error("NASA request error:", error);
+
+    showMessage(
+      `The space images could not be loaded: ${error.message}`,
+      "error"
+    );
+  } finally {
+    // Re-enable the button after the request finishes
+    getImagesBtn.disabled = false;
+    getImagesBtn.textContent = "Get Space Images";
   }
-
-  displaySpaceImages(data);
-} catch (error) {
-  console.error("NASA request error:", error);
-
-  showMessage(
-    `The space images could not be loaded: ${error.message}`,
-    "error"
-  );
-} finally {
-  getImagesBtn.disabled = false;
-  getImagesBtn.textContent = "Get Space Images";
-}
 }
 
 function displaySpaceImages(spaceItems) {
-  // Clear the placeholder or loading message
+  // Clear the placeholder, loading message, or old results
   gallery.innerHTML = "";
 
-  // The date-range request should return an array
+  // Make sure NASA returned an array with results
   if (!Array.isArray(spaceItems) || spaceItems.length === 0) {
-    showMessage("No space images were found for that date range.", "error");
+    showMessage(
+      "No space images were found for that date range.",
+      "error"
+    );
     return;
   }
 
-  // Put the newest APOD entry first
-  spaceItems.reverse();
+  // Copy and reverse the array so the newest item appears first
+  const newestFirst = [...spaceItems].reverse();
 
-  spaceItems.forEach(function (item) {
-    // Create one card for each day's APOD
+  newestFirst.forEach(function (item) {
+    // Create one card for each APOD entry
     const card = document.createElement("article");
     card.className = "space-card";
 
-    // Create the media area
+    // Create the media section
     const mediaContainer = document.createElement("div");
     mediaContainer.className = "space-card-media";
 
     if (item.media_type === "image") {
+      const imageLink = document.createElement("a");
       const image = document.createElement("img");
 
+      imageLink.href = item.hdurl || item.url;
+      imageLink.target = "_blank";
+      imageLink.rel = "noopener noreferrer";
+
       image.src = item.url;
-      image.alt = item.title;
+      image.alt = item.title || "NASA Astronomy Picture of the Day";
       image.loading = "lazy";
 
-      mediaContainer.appendChild(image);
+      imageLink.appendChild(image);
+      mediaContainer.appendChild(imageLink);
     } else if (item.media_type === "video") {
-      // NASA can occasionally return a video instead of an image
       if (item.thumbnail_url) {
         const videoLink = document.createElement("a");
         const thumbnail = document.createElement("img");
@@ -139,9 +181,14 @@ function displaySpaceImages(spaceItems) {
 
         mediaContainer.appendChild(videoLink);
       }
+    } else {
+      const unavailableMessage = document.createElement("p");
+      unavailableMessage.textContent = "Media unavailable.";
+
+      mediaContainer.appendChild(unavailableMessage);
     }
 
-    // Create the text area
+    // Create the text section
     const content = document.createElement("div");
     content.className = "space-card-content";
 
@@ -150,17 +197,18 @@ function displaySpaceImages(spaceItems) {
     date.textContent = formatDate(item.date);
 
     const title = document.createElement("h2");
-    title.textContent = item.title;
+    title.textContent = item.title || "Untitled NASA Image";
 
     const explanation = document.createElement("p");
     explanation.className = "space-description";
-    explanation.textContent = item.explanation;
+    explanation.textContent =
+      item.explanation || "No description is available.";
 
     content.appendChild(date);
     content.appendChild(title);
     content.appendChild(explanation);
 
-    // NASA sometimes provides copyright information
+    // Add image credit when NASA provides it
     if (item.copyright) {
       const copyright = document.createElement("p");
       copyright.className = "space-copyright";
@@ -187,7 +235,6 @@ function showMessage(message, type) {
 }
 
 function formatDate(dateString) {
-  // Adding T00:00:00 helps prevent timezone-related date changes
   const date = new Date(`${dateString}T00:00:00`);
 
   return date.toLocaleDateString("en-US", {
