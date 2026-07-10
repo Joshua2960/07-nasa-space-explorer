@@ -15,7 +15,7 @@ const gallery = document.getElementById("gallery");
 setupDateInputs(startInput, endInput);
 
 // NASA APOD API information
-const apiKey = "DEMO_KEY";
+const apiKey = "IhoqzfQT43bzr7SwrS0W6jLIIRBGiCxc6uchLiwj";
 const apiUrl = "https://api.nasa.gov/planetary/apod";
 
 // Run getSpaceImages when the user clicks the button
@@ -45,37 +45,42 @@ async function getSpaceImages() {
   getImagesBtn.textContent = "Loading...";
 
   const requestUrl =
-    `${apiUrl}?api_key=${apiKey}` +
-    `&start_date=${startDate}` +
-    `&end_date=${endDate}` +
-    `&thumbs=true`;
+  `${apiUrl}?api_key=${apiKey}` +
+  `&start_date=2025-07-01` +
+  `&end_date=2025-07-03` +
+  `&thumbs=true`;
 
   try {
-    // Request the data from NASA
-    const response = await fetch(requestUrl);
+  console.log("Request URL:", requestUrl);
 
-    // Throw an error if NASA returns an unsuccessful response
-    if (!response.ok) {
-      throw new Error(`NASA API request failed: ${response.status}`);
-    }
+  const response = await fetch(requestUrl);
 
-    // Convert the response into JavaScript data
-    const spaceItems = await response.json();
+  // Read NASA's response before checking response.ok
+  const data = await response.json();
 
-    // Display the returned APOD entries
-    displaySpaceImages(spaceItems);
-  } catch (error) {
-    console.error(error);
+  console.log("NASA response:", data);
 
-    showMessage(
-      "The space images could not be loaded. Please try again later.",
-      "error"
-    );
-  } finally {
-    // Re-enable the button after the request finishes
-    getImagesBtn.disabled = false;
-    getImagesBtn.textContent = "Get Space Images";
+  if (!response.ok) {
+    const nasaMessage =
+      data.error?.message ||
+      data.msg ||
+      `NASA API request failed with status ${response.status}`;
+
+    throw new Error(nasaMessage);
   }
+
+  displaySpaceImages(data);
+} catch (error) {
+  console.error("NASA request error:", error);
+
+  showMessage(
+    `The space images could not be loaded: ${error.message}`,
+    "error"
+  );
+} finally {
+  getImagesBtn.disabled = false;
+  getImagesBtn.textContent = "Get Space Images";
+}
 }
 
 function displaySpaceImages(spaceItems) {
