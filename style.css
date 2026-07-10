@@ -142,3 +142,32 @@ button:hover {
   font-size: 48px;
   margin-bottom: 20px;
 }
+
+.hero {
+    display: flex;
+    justify-content: center;
+    margin: 25px 0 35px;
+}
+
+.hero-logo {
+    width: 220px;
+    max-width: 90%;
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(0,0,0,.35);
+    transition: transform .3s ease;
+}
+
+.hero-logo:hover {
+    transform: scale(1.05);
+}
+
+/* watermark */
+
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: url("img/NASA-Logo-Large.jpg") center center / 500px no-repeat;
+    opacity: 0.05;
+    z-index: -1;
+}
